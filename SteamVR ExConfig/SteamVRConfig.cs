@@ -24,12 +24,6 @@ public class VRDriverManifest
     public bool AlwaysActivate { get; set; }
 }
 
-public class OpenVRPaths
-{
-    [JsonPropertyName( "external_drivers" )]
-    public List<string>? ExternalDrivers { get; set; }
-}
-
 public class VRDriverSetting : IVRSetting
 {
     [JsonPropertyName( "enable" )]
