@@ -5,19 +5,17 @@ namespace SteamVR_ExConfig;
 
 public partial class MainForm : Form
 {
-    private List<VRAppSetting> vrApps;
-    private SteamVRConfig vrConfig;
+    private SteamVRConfig steamVRConfig;
 
-    public MainForm( List<VRAppSetting> vrApps, SteamVRConfig vrConfig )
+    public MainForm( SteamVRConfig vrConfig )
     {
         InitializeComponent();
 
-        this.vrApps = vrApps;
-        this.vrConfig = vrConfig;
+        this.steamVRConfig = vrConfig;
 
         SuspendLayout();
-        InitializeSettingList( autolaunchGroupBox, vrApps );
-        InitializeSettingList( driverGroupBox, vrConfig.DriverSettings! );
+        InitializeSettingList( autolaunchGroupBox, vrConfig.AppSettings );
+        InitializeSettingList( driverGroupBox, vrConfig.DriverSettings );
         ResumeLayout( false );
     }
 
@@ -116,14 +114,8 @@ public partial class MainForm : Form
         if ( button is null )
             return;
 
-        // Save changed apps
-        foreach ( var vrApp in vrApps )
-        {
-            vrApp.SaveToFile();
-        }
-
         // Save drivers
-        vrConfig.SaveToFile();
+        steamVRConfig.Save();
 
         button.Text = "Saved...";
         button.Enabled = false;
