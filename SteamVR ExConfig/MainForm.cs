@@ -116,10 +116,14 @@ public partial class MainForm : Form
         if ( button is null )
             return;
 
+        // Save changed apps
         foreach ( var vrApp in vrApps )
         {
             vrApp.SaveToFile();
         }
+
+        // Save drivers
+        vrConfig.SaveToFile();
 
         button.Text = "Saved...";
         button.Enabled = false;

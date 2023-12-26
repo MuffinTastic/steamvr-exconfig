@@ -66,13 +66,69 @@ public class SteamVRConfig
 
     public void SaveToFile()
     {
-        // TODO
+        // Make a backup just so people don't scream at me...
+        var backupFileDest = ConfigFilePath! + ExConfigBackupFileExt;
+
+        if ( !File.Exists( backupFileDest ) )
+            File.Copy( ConfigFilePath!, backupFileDest );
+
+
+        Dictionary<string, object>? vrSettings;
+
+        using ( var stream = File.OpenRead( ConfigFilePath! ) )
+        {
+            vrSettings = JsonSerializer.Deserialize<Dictionary<string, object>>( stream, JsonSerializerOptions.Default );
+        }
+
+        if ( vrSettings is null )
+        {
+            throw new JsonException( "Couldn't parse SteamVR settings - got null object" );
+        }
+
+        // Wipe existing disabled drivers
+
+        foreach ( var key in vrSettings.Keys )
+        {
+            var driverMatch = SteamVRDriverRegex.Match( key );
+            if ( driverMatch.Groups.Count != 2 )
+                continue;
+
+            string driverName = driverMatch.Groups[1].Value;
+
+            vrSettings.Remove( key );
+
+            Debug.WriteLine( $"Wiped {key}" );
+        }
+
+        // Add our own disabled drivers
+
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true
+        };
+
+        foreach ( var driverSetting in DriverSettings! )
+        {
+            if ( driverSetting.Enabled )
+                continue;
+
+            var element = JsonSerializer.SerializeToElement( driverSetting, options );
+            vrSettings.Add( "driver_" + driverSetting.InternalName, element );
+        }
+
+        using ( var stream = File.Open( ConfigFilePath!, FileMode.Create ) )
+        {
+            var jsonOutput = JsonSerializer.Serialize( vrSettings, options );
+            Debug.WriteLine( jsonOutput );
+            stream.Write( Encoding.Default.GetBytes( jsonOutput ) );
+        }
     }
 
     // --- //
 
     private const string SteamVRAppID = "250820";
     private const string SteamVRConfigFile = "steamvr.vrsettings";
+    private const string ExConfigBackupFileExt = ".excfg.bkp";
 
     private static Regex SteamVRDriverRegex = new Regex( @"^driver_(?!lighthouse)(.+)$", RegexOptions.Compiled );
     private static string SteamVRDriverPath = "drivers";
