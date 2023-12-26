@@ -53,7 +53,7 @@ public partial class MainForm : Form
         settingsTable.TabIndex = 0;
 
         int itemCount = 0;
-        int maxCount = vrApps.Count;
+        int maxCount = settingsList.Count();
         settingsTable.RowCount = 0;
         settingsTable.HorizontalScroll.Maximum = 0;
         settingsTable.AutoScroll = true;
