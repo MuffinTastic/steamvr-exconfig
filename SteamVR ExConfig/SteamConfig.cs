@@ -172,7 +172,6 @@ public class SteamConfig
 
             Debug.WriteLine( $"Steam path: {steamPath}" );
 
-
             config = new SteamConfig()
             {
                 SteamPath = steamPath!,
