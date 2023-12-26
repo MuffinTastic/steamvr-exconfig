@@ -16,38 +16,38 @@ public class VRAppConfig
     public bool Autolaunch { get; set; } = false;
 
     [JsonPropertyName( "last_launch_time" )]
-    public string? LastLaunchTime { get; set; } = "0";
+    public string LastLaunchTime { get; set; } = "0";
 }
 
 public class VRAppSetting : IVRSetting
 {
-    public string? ReadableName { get; set; }
-    public string? ConfigFilePath { get; set; }
+    public required string ReadableName { get; set; }
+    public required string ConfigFilePath { get; set; }
 
-    private VRAppConfig? Config { get; set; }
+    public required VRAppConfig Config { get; set; }
 
     // --- //
 
-    public bool Enabled => Config!.Autolaunch;
+    public bool Enabled => Config.Autolaunch;
 
     private bool Dirty = false;
 
     public void SetEnabled( bool enabled )
     {
-        Config!.Autolaunch = enabled;
+        Config.Autolaunch = enabled;
         Dirty = true;
     }
 
     // --- //
 
-    public void SaveToFile()
+    public void Save()
     {
         if ( Dirty )
         {
-            using ( var stream = File.Open( ConfigFilePath!, FileMode.Create ) )
+            using ( var stream = File.Open( ConfigFilePath, FileMode.Create ) )
             {
                 var options = new JsonSerializerOptions() { WriteIndented = true };
-                stream.Write( Encoding.Default.GetBytes( JsonSerializer.Serialize( Config!, options ) ) );
+                stream.Write( Encoding.Default.GetBytes( JsonSerializer.Serialize( Config, options ) ) );
             }
 
             Debug.WriteLine( $"Updated {ConfigFilePath} - Set autolaunch to {Enabled}" );
@@ -73,10 +73,11 @@ public class VRAppSetting : IVRSetting
         { "slimevr.steamvr.feeder", "SlimeVR Feeder" }
     };
 
-    public static List<VRAppSetting> GetVRAppSettings( SteamConfig steamConfig )
+    public static List<VRAppSetting> GetAppSettings( OpenVRPaths openVRPaths, SteamLibraries steamLibraries )
     {
-        var paths = Directory.EnumerateFiles( steamConfig.VRAppConfigPath! ).Where( p => p.EndsWith( ".vrappconfig" ) );
+        var paths = Directory.EnumerateFiles( openVRPaths.VRAppConfigPath ).Where( p => p.EndsWith( ".vrappconfig" ) );
 
+        //var steamAppsManifest = SteamAppsManifest.Load( openVRPaths );
         List<VRAppSetting> vrApps = new();
 
         foreach ( var path in paths )
@@ -85,7 +86,7 @@ public class VRAppSetting : IVRSetting
                 continue;
 
             var filename = Path.GetFileNameWithoutExtension( path );
-            var name = GetVRAppName( steamConfig, filename );
+            var name = GetVRAppName( steamLibraries, filename );
 
             // This lets us skip known non-existent/rejected apps
             if ( name is null )
@@ -110,7 +111,7 @@ public class VRAppSetting : IVRSetting
         return vrApps;
     }
 
-    private static string? GetVRAppName( SteamConfig steamConfig, string filename )
+    private static string? GetVRAppName( SteamLibraries steamLibraries, string filename )
     {
         string? name = filename;
 
@@ -132,7 +133,7 @@ public class VRAppSetting : IVRSetting
             {
                 string appID = steamMatch.Groups[1].Value;
 
-                name = steamConfig.GetNameForAppID( appID );
+                name = steamLibraries.GetNameForAppID( appID );
             }
         }
 
@@ -141,20 +142,9 @@ public class VRAppSetting : IVRSetting
 
     private static VRAppConfig? ReadVRAppConfig( string path )
     {
-        VRAppConfig? appConfig = null;
-
-        try
+        using ( var stream = File.OpenRead( path ) )
         {
-            using ( var stream = File.OpenRead( path ) )
-            {
-                appConfig = JsonSerializer.Deserialize<VRAppConfig>( stream, JsonSerializerOptions.Default );
-            }
+            return JsonSerializer.Deserialize<VRAppConfig>( stream, JsonSerializerOptions.Default );
         }
-        catch ( Exception ex )
-        {
-            Debug.WriteLine( $"Couldn't read VR App Config {path} - {ex}" );
-        }
-
-        return appConfig;
     }
 }

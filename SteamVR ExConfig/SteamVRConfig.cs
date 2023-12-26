@@ -18,10 +18,10 @@ namespace SteamVR_ExConfig;
 public class VRDriverManifest
 {
     [JsonPropertyName( "name" )]
-    public string? InternalName { get; set; }
+    public required string InternalName { get; set; }
 
     [JsonPropertyName( "alwaysActivate" )]
-    public bool AlwaysActivate { get; set; }
+    public bool AlwaysActivate { get; set; } = false;
 }
 
 public class VRDriverSetting : IVRSetting
@@ -35,7 +35,7 @@ public class VRDriverSetting : IVRSetting
     // --- //
 
     [JsonIgnore]
-    public string InternalName { get; set; }
+    public string? InternalName { get; set; }
 
     [JsonIgnore]
     public string ReadableName { get; set; }
@@ -52,32 +52,33 @@ public class VRDriverSetting : IVRSetting
 
 public class SteamVRConfig
 {
-    public string? ConfigFilePath { get; set; }
+    public required List<VRAppSetting> AppSettings;
 
-    public List<VRDriverSetting>? DriverSettings;
+    public required string ConfigFilePath { get; set; }
+    public required List<VRDriverSetting> DriverSettings;
 
     // --- //
 
-    public void SaveToFile()
+    public void Save()
+    {
+        foreach ( var app in AppSettings )
+        {
+            app.Save();
+        }
+
+        SaveDrivers();
+    }
+
+    private void SaveDrivers()
     {
         // Make a backup just so people don't scream at me...
-        var backupFileDest = ConfigFilePath! + ExConfigBackupFileExt;
+        var backupFileDest = ConfigFilePath + ExConfigBackupFileExt;
 
         if ( !File.Exists( backupFileDest ) )
-            File.Copy( ConfigFilePath!, backupFileDest );
+            File.Copy( ConfigFilePath, backupFileDest );
 
 
-        Dictionary<string, object>? vrSettings;
-
-        using ( var stream = File.OpenRead( ConfigFilePath! ) )
-        {
-            vrSettings = JsonSerializer.Deserialize<Dictionary<string, object>>( stream, JsonSerializerOptions.Default );
-        }
-
-        if ( vrSettings is null )
-        {
-            throw new JsonException( "Couldn't parse SteamVR settings - got null object" );
-        }
+        var vrSettings = ReadSteamVRConfig( ConfigFilePath );
 
         // Wipe existing disabled drivers
 
@@ -87,11 +88,7 @@ public class SteamVRConfig
             if ( driverMatch.Groups.Count != 2 )
                 continue;
 
-            string driverName = driverMatch.Groups[1].Value;
-
             vrSettings.Remove( key );
-
-            Debug.WriteLine( $"Wiped {key}" );
         }
 
         // Add our own disabled drivers
@@ -110,7 +107,7 @@ public class SteamVRConfig
             vrSettings.Add( "driver_" + driverSetting.InternalName, element );
         }
 
-        using ( var stream = File.Open( ConfigFilePath!, FileMode.Create ) )
+        using ( var stream = File.Open( ConfigFilePath, FileMode.Create ) )
         {
             var jsonOutput = JsonSerializer.Serialize( vrSettings, options );
             Debug.WriteLine( jsonOutput );
@@ -120,103 +117,54 @@ public class SteamVRConfig
 
     // --- //
 
-    private const string SteamVRAppID = "250820";
     private const string SteamVRConfigFile = "steamvr.vrsettings";
     private const string ExConfigBackupFileExt = ".excfg.bkp";
 
     private static Regex SteamVRDriverRegex = new Regex( @"^driver_(?!lighthouse)(.+)$", RegexOptions.Compiled );
-    private static string SteamVRDriverPath = "drivers";
+    private static string SteamVRDriverDirName = "drivers";
 
-    private static string OpenVRPathsFile = "openvr/openvrpaths.vrpath";
-
-    private static Dictionary<string, string> KnownVRDrivers = new Dictionary<string, string>()
+    private static Dictionary<string, string> KnownDrivers = new Dictionary<string, string>()
     {
         { "gamepad", "Gamepad Support" },
     };
 
-    public static SteamVRConfig GetVRConfig( SteamConfig steamConfig )
+    public static SteamVRConfig GetVRConfig( OpenVRPaths openVRPaths, SteamLibraries steamLibraries )
     {
-        var configFilePath = Path.Combine( steamConfig.ConfigPath!, SteamVRConfigFile );
+        var appSettings = VRAppSetting.GetAppSettings( openVRPaths, steamLibraries );
+
+
+        var configFilePath = Path.Combine( openVRPaths.ConfigPath, SteamVRConfigFile );
+        var driverPath = Path.Combine( openVRPaths.RuntimePath, SteamVRDriverDirName );
+
+        Debug.WriteLine( $"SteamVR Install Path: {openVRPaths.RuntimePath}" );
+
+        var driverDirs = Directory.EnumerateDirectories( driverPath ).ToList();
+        driverDirs.AddRange( openVRPaths.ExternalDrivers );
+
+        var driverSettings = GetDriverSettings( configFilePath, driverDirs );
+
 
         var steamVRConfig = new SteamVRConfig()
         {
-            ConfigFilePath = configFilePath
+            AppSettings = appSettings,
+            ConfigFilePath = configFilePath,
+            DriverSettings = driverSettings,
         };
-
-        try
-        {
-            var installPath = steamConfig.GetInstallLocationForAppID( SteamVRAppID );
-            Debug.WriteLine( $"SteamVR Install Path: {installPath}" );
-            var driverPath = Path.Combine( installPath!, SteamVRDriverPath );
-            Debug.WriteLine( $"SteamVR Driver Path: {driverPath}" );
-
-
-            var driverDirs = Directory.EnumerateDirectories( driverPath! ).ToList();
-            var externalDriverPaths = GetExternalDriverDirectories();
-
-            if ( externalDriverPaths is not null )
-            {
-                driverDirs.AddRange( externalDriverPaths );
-            }
-
-            using ( var stream = File.OpenRead( steamVRConfig.ConfigFilePath ) )
-            {
-                var vrSettings = JsonSerializer.Deserialize<Dictionary<string, object>>( stream, JsonSerializerOptions.Default );
-
-                steamVRConfig.DriverSettings = GetVRDriverSettings( vrSettings!, driverDirs );
-            }
-        }
-        catch ( Exception ex )
-        {
-            Debug.WriteLine( $"Couldn't read SteamVR config {configFilePath} - {ex}" );
-            steamVRConfig.DriverSettings = new();
-        }
-
 
         return steamVRConfig;
     }
 
-    private static List<string>? GetExternalDriverDirectories()
+    private static List<VRDriverSetting> GetDriverSettings( string configFilePath, List<string> driverDirs )
     {
-        string? openvrPathsBase = null;
+        var vrConfig = ReadSteamVRConfig( configFilePath );
 
-
-        if ( RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) )
-            openvrPathsBase = Environment.GetFolderPath( Environment.SpecialFolder.LocalApplicationData );
-        //else if ( RuntimeInformation.IsOSPlatform( OSPlatform.Linux ) )
-        //    openvrPathsBase = ;
-
-        if ( openvrPathsBase is null )
-            return null;
-
-        var openvrPathsFilePath = Path.Combine( openvrPathsBase, OpenVRPathsFile );
-        List<string>? externalDriverPaths = null;
-
-        try
-        {
-            using ( var stream = File.OpenRead( openvrPathsFilePath ) )
-            {
-                var openvrPaths = JsonSerializer.Deserialize<OpenVRPaths>( stream, JsonSerializerOptions.Default );
-                externalDriverPaths = openvrPaths?.ExternalDrivers;
-            }
-        }
-        catch ( Exception ex )
-        {
-            Debug.WriteLine( $"Couldn't retreive OpenVR paths: {ex}" );
-        }
-
-        return externalDriverPaths;
-    }
-
-    private static List<VRDriverSetting> GetVRDriverSettings( Dictionary<string, object> vrSettings, List<string> driverDirs )
-    {
         List<VRDriverSetting> driverSettings = new();
 
         // Get existing (disabled) drivers first)
 
         Dictionary<string, VRDriverSetting> existingSettings = new();
 
-        foreach ( var item in vrSettings )
+        foreach ( var item in vrConfig )
         {
             var jsonKey = item.Key;
             var jsonValue = (JsonElement) item.Value;
@@ -245,7 +193,7 @@ public class SteamVRConfig
 
                 VRDriverSetting driverSetting;
 
-                if ( existingSettings.TryGetValue( driverManifest!.InternalName, out var existingSetting ) )
+                if ( existingSettings.TryGetValue( driverManifest.InternalName, out var existingSetting ) )
                 {
                     if ( existingSetting.BlockedBySafeMode )
                     {
@@ -266,7 +214,7 @@ public class SteamVRConfig
                 }
 
                 driverSetting.InternalName = driverManifest.InternalName;
-                driverSetting.ReadableName = GetKnownVRDriverName( driverManifest.InternalName );
+                driverSetting.ReadableName = GetKnownDriverName( driverManifest.InternalName );
 
                 driverSettings.Add( driverSetting );
             }
@@ -275,16 +223,29 @@ public class SteamVRConfig
         return driverSettings;
     }
 
-    private static string GetKnownVRDriverName( string driverName )
+    private static string GetKnownDriverName( string driverName )
     {
         string? name = driverName;
 
         // Match from Steam app manifests
-        if ( KnownVRDrivers.GetValueOrDefault( driverName ) is string knownName )
+        if ( KnownDrivers.GetValueOrDefault( driverName ) is string knownName )
         {
             name = knownName;
         }
 
         return name;
+    }
+
+    private static Dictionary<string, object> ReadSteamVRConfig( string filePath )
+    {
+        using ( var stream = File.OpenRead( filePath ) )
+        {
+            var config = JsonSerializer.Deserialize<Dictionary<string, object>>( stream, JsonSerializerOptions.Default );
+            
+            if ( config is null )
+                throw new JsonException( "Couldn't parse SteamVR settings - got null object" );
+
+            return config;
+        }
     }
 }

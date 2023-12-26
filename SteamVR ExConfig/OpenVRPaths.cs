@@ -14,12 +14,14 @@ namespace SteamVR_ExConfig;
 public class OpenVRPaths
 {
     public required string ConfigPath { get; set; }
+    public required string VRAppConfigPath { get; set; }
     public required string RuntimePath { get; set; }
     public required List<string> ExternalDrivers { get; set; }
 
     // --- //
 
     private static string OpenVRPathsFile = "openvr/openvrpaths.vrpath";
+    private static string VRAppConfigDirName = "vrappconfig";
 
     public static OpenVRPaths Load( Config config )
     {
@@ -57,12 +59,14 @@ public class OpenVRPaths
                 throw new ArgumentNullException( "OpenVR registry contained a null object" );
 
             var configPath = openvrPathsJson.Config[0];
+            var vrAppConfigPath = Path.Combine( configPath, VRAppConfigDirName );
             var runtimePath = openvrPathsJson.Runtime[0];
             var externalDrivers = openvrPathsJson.ExternalDrivers;
 
             var openVRPaths = new OpenVRPaths()
             {
                 ConfigPath = configPath,
+                VRAppConfigPath = vrAppConfigPath,
                 RuntimePath = runtimePath,
                 ExternalDrivers = externalDrivers
             };
