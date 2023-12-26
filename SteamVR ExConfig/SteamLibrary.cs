@@ -15,6 +15,11 @@ public class SteamLibrary
     public required HashSet<string> Apps { get; set; }
 }
 
+/// <summary>
+/// Steam Libraries!
+/// We need this because OpenVR is too dumb to tell us if an app is really installed.
+/// While we're at it, we can also read the names.
+/// </summary>
 public class SteamLibraries
 {
     public required List<SteamLibrary> Libraries { get; set; }
@@ -32,19 +37,6 @@ public class SteamLibraries
         return manifest["name"].ToString();
     }
 
-    public string? GetInstallLocationForAppID( string appID )
-    {
-        var result = GetAppManifest( appID );
-        if ( result is null )
-            return null;
-
-        var libraryPath = result.Value.Item1;
-        var manifest = result.Value.Item2;
-        var installDir = manifest["installdir"].ToString();
-
-        return Path.Combine( libraryPath, CommonPath, installDir! );
-    }
-
     // --- //
 
 
@@ -52,16 +44,10 @@ public class SteamLibraries
     {
         // Get which library this app is installed in
 
-        string? libraryPath = null;
-
-        foreach ( var library in Libraries! )
-        {
-            if ( library.Apps!.Contains( appID ) )
-            {
-                libraryPath = library.Path;
-                break;
-            }
-        }
+        string? libraryPath = Libraries
+            .Where( l => l.Apps.Contains( appID ) )
+            .Select( l => l.Path )
+            .FirstOrDefault();
 
         // Not installed, we have no manifest to return
         if ( libraryPath is null )
@@ -86,11 +72,6 @@ public class SteamLibraries
             Debug.WriteLine( $"Couldn't find Steam App Manifest for {appID} - {ex.Message}" );
             return null;
         }
-        catch ( Exception ex )
-        {
-            Debug.WriteLine( $"Couldn't read Steam App Manifest for {appID} - {ex}" );
-            return null;
-        }
 
         if ( manifest is null )
             return null;
@@ -101,49 +82,44 @@ public class SteamLibraries
     // --- //
 
     private const string SteamAppsPath = "steamapps";
-    private const string CommonPath = "common";
 
     private const string SteamLibraryFolderVDF = "libraryfolders.vdf";
     private const string SteamAppManifestFormat = "appmanifest_{0}.acf";
 
-    public static List<SteamLibrary> GetLibraries( OpenVRPaths openVRPaths )
+    public static SteamLibraries GetLibraries( OpenVRPaths openVRPaths )
     {
         List<SteamLibrary> libraries = new();
 
-        try
+        KVObject? librariesData;
+
+        var vdfPath = Path.Combine( openVRPaths.ConfigPath, SteamLibraryFolderVDF );
+        using ( var stream = File.OpenRead( vdfPath ) )
         {
-            KVObject? librariesData;
-
-            var vdfPath = Path.Combine( openVRPaths.ConfigPath, SteamLibraryFolderVDF );
-            using ( var stream = File.OpenRead( vdfPath ) )
-            {
-                var kv = KVSerializer.Create( KVSerializationFormat.KeyValues1Text );
-                librariesData = kv.Deserialize( stream );
-            }
-
-            foreach ( var libraryData in librariesData )
-            {
-                var path = libraryData["path"].ToString();
-                var appsEnumerator = libraryData["apps"] as IEnumerable<KVObject>;
-                var apps = appsEnumerator!.Select( app => app.Name.ToString() ).ToHashSet();
-
-                if ( !apps.Any() )
-                    continue;
-
-                var library = new SteamLibrary()
-                {
-                    Path = Path.Combine( path!, SteamAppsPath ),
-                    Apps = apps
-                };
-
-                libraries.Add( library );
-            }
-        }
-        catch ( Exception ex )
-        {
-            Debug.WriteLine( $"Couldn't retrieve libraries: {ex}" );
+            var kv = KVSerializer.Create( KVSerializationFormat.KeyValues1Text );
+            librariesData = kv.Deserialize( stream );
         }
 
-        return libraries;
+        foreach ( var libraryData in librariesData )
+        {
+            var path = libraryData["path"].ToString();
+            var appsEnumerator = libraryData["apps"] as IEnumerable<KVObject>;
+            var apps = appsEnumerator!.Select( app => app.Name.ToString() ).ToHashSet();
+
+            if ( !apps.Any() )
+                continue;
+
+            var library = new SteamLibrary()
+            {
+                Path = Path.Combine( path!, SteamAppsPath ),
+                Apps = apps
+            };
+
+            libraries.Add( library );
+        }
+
+        return new SteamLibraries()
+        {
+            Libraries = libraries
+        };
     }
 }
