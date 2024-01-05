@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace SteamVR_ExConfig;
 
 internal static class Program
