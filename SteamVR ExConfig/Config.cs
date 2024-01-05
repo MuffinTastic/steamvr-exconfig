@@ -7,8 +7,10 @@ namespace SteamVR_ExConfig;
 
 public class Config
 {
-    [JsonPropertyName( "openvrpath" ), JsonRequired]
-    public string? OpenVRRegistryFilePath { get; set; }
+    [JsonPropertyName( "openvrpath" )]
+    public string? OpenVRRegistryFilePath { get; set; } = null;
+    [JsonPropertyName( "darkmode" )]
+    public bool DarkMode { get; set; } = false;
 
     // --- //
 

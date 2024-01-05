@@ -5,17 +5,20 @@ namespace SteamVR_ExConfig;
 
 public partial class MainForm : Form
 {
+    private Config config;
     private SteamVRConfig steamVRConfig;
 
-    public MainForm( SteamVRConfig vrConfig )
+    public MainForm( Config config, SteamVRConfig steamVRConfig )
     {
         InitializeComponent();
 
-        this.steamVRConfig = vrConfig;
+        this.config = config;
+        this.steamVRConfig = steamVRConfig;
 
         SuspendLayout();
-        InitializeSettingList( autolaunchGroupBox, vrConfig.AppSettings );
-        InitializeSettingList( driverGroupBox, vrConfig.DriverSettings );
+        InitializeSettingList( autolaunchGroupBox, steamVRConfig.AppSettings );
+        InitializeSettingList( driverGroupBox, steamVRConfig.DriverSettings );
+        SetTheme( config.DarkMode );
         ResumeLayout( false );
     }
 
@@ -79,7 +82,7 @@ public partial class MainForm : Form
             settingToggle.Checked = setting.Enabled;
             settingToggle.CheckedChanged += ( _, _ ) => setting.SetEnabled( settingToggle.Checked );
             settingsTable.Controls.Add( settingToggle, 1, settingsTable.RowCount );
-            
+
             settingsTable.RowCount++;
             settingsTable.RowStyles.Add( new RowStyle( SizeType.Absolute, 30F ) );
 
@@ -108,19 +111,36 @@ public partial class MainForm : Form
 
     }
 
+    bool saveActivated = true;
+
     private async void saveButton_Click( object sender, EventArgs e )
     {
         var button = sender as Button;
-        if ( button is null )
+        if ( button is null || !saveActivated )
             return;
 
         // Save drivers
         steamVRConfig.Save();
 
         button.Text = "Saved...";
-        button.Enabled = false;
+        saveActivated = false;
+        SetButtonTheme( button, config.DarkMode, saveActivated );
+
         await Task.Delay( 500 );
+
         button.Text = "Save";
-        button.Enabled = true;
+        saveActivated = true;
+        SetButtonTheme( button, config.DarkMode, saveActivated );
+    }
+
+    private void themeToggle_Click( object sender, EventArgs e )
+    {
+        config.DarkMode = !config.DarkMode;
+
+        SuspendLayout();
+        SetTheme( config.DarkMode );
+        ResumeLayout( false );
+
+        config.SaveToFile();
     }
 }

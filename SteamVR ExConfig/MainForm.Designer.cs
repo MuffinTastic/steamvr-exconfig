@@ -30,11 +30,14 @@ partial class MainForm
     {
         saveButton = new Button();
         formLayout = new TableLayoutPanel();
+        tableLayoutPanel1 = new TableLayoutPanel();
+        themeToggle = new Button();
         splitContainer = new SplitContainer();
         label1 = new Label();
         autolaunchGroupBox = new GroupBox();
         driverGroupBox = new GroupBox();
         formLayout.SuspendLayout();
+        tableLayoutPanel1.SuspendLayout();
         ( (System.ComponentModel.ISupportInitialize) splitContainer ).BeginInit();
         splitContainer.Panel1.SuspendLayout();
         splitContainer.Panel2.SuspendLayout();
@@ -43,20 +46,21 @@ partial class MainForm
         // 
         // saveButton
         // 
-        saveButton.Anchor = AnchorStyles.None;
-        saveButton.Location = new Point( 4, 406 );
+        saveButton.Dock = DockStyle.Fill;
+        saveButton.FlatStyle = FlatStyle.Flat;
+        saveButton.Location = new Point( 38, 3 );
         saveButton.Name = "saveButton";
-        saveButton.Size = new Size( 325, 34 );
+        saveButton.Size = new Size( 287, 28 );
         saveButton.TabIndex = 1;
         saveButton.Text = "Save";
-        saveButton.UseVisualStyleBackColor = true;
+        saveButton.UseVisualStyleBackColor = false;
         saveButton.Click +=  saveButton_Click ;
         // 
         // formLayout
         // 
         formLayout.ColumnCount = 1;
         formLayout.ColumnStyles.Add( new ColumnStyle() );
-        formLayout.Controls.Add( saveButton, 0, 1 );
+        formLayout.Controls.Add( tableLayoutPanel1, 0, 1 );
         formLayout.Controls.Add( splitContainer, 0, 0 );
         formLayout.Dock = DockStyle.Fill;
         formLayout.Location = new Point( 0, 0 );
@@ -67,6 +71,33 @@ partial class MainForm
         formLayout.RowStyles.Add( new RowStyle( SizeType.Absolute, 20F ) );
         formLayout.Size = new Size( 334, 443 );
         formLayout.TabIndex = 5;
+        // 
+        // tableLayoutPanel1
+        // 
+        tableLayoutPanel1.ColumnCount = 2;
+        tableLayoutPanel1.ColumnStyles.Add( new ColumnStyle( SizeType.Absolute, 35F ) );
+        tableLayoutPanel1.ColumnStyles.Add( new ColumnStyle( SizeType.Percent, 100F ) );
+        tableLayoutPanel1.Controls.Add( saveButton, 1, 0 );
+        tableLayoutPanel1.Controls.Add( themeToggle, 0, 0 );
+        tableLayoutPanel1.Dock = DockStyle.Fill;
+        tableLayoutPanel1.Location = new Point( 3, 406 );
+        tableLayoutPanel1.Name = "tableLayoutPanel1";
+        tableLayoutPanel1.RowCount = 1;
+        tableLayoutPanel1.RowStyles.Add( new RowStyle( SizeType.Percent, 100F ) );
+        tableLayoutPanel1.Size = new Size( 328, 34 );
+        tableLayoutPanel1.TabIndex = 0;
+        // 
+        // themeToggle
+        // 
+        themeToggle.Dock = DockStyle.Fill;
+        themeToggle.FlatStyle = FlatStyle.Flat;
+        themeToggle.Location = new Point( 3, 3 );
+        themeToggle.Name = "themeToggle";
+        themeToggle.Size = new Size( 29, 28 );
+        themeToggle.TabIndex = 2;
+        themeToggle.Text = "☼";
+        themeToggle.UseVisualStyleBackColor = false;
+        themeToggle.Click +=  themeToggle_Click ;
         // 
         // splitContainer
         // 
@@ -129,6 +160,7 @@ partial class MainForm
         Text = "SteamVR External Configurator";
         Load +=  MainForm_Load ;
         formLayout.ResumeLayout( false );
+        tableLayoutPanel1.ResumeLayout( false );
         splitContainer.Panel1.ResumeLayout( false );
         splitContainer.Panel2.ResumeLayout( false );
         ( (System.ComponentModel.ISupportInitialize) splitContainer ).EndInit();
@@ -143,4 +175,6 @@ partial class MainForm
     private GroupBox autolaunchGroupBox;
     private GroupBox driverGroupBox;
     private Label label1;
+    private TableLayoutPanel tableLayoutPanel1;
+    private Button themeToggle;
 }

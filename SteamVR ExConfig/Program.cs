@@ -10,10 +10,10 @@ internal static class Program
             var config = Config.Load();
             var openVRPaths = OpenVRPaths.Load( config );
             var steamLibraries = SteamLibraries.GetLibraries( openVRPaths );
-            var vrConfig = SteamVRConfig.GetVRConfig( openVRPaths, steamLibraries );
+            var steamVRConfig = SteamVRConfig.GetVRConfig( openVRPaths, steamLibraries );
 
             ApplicationConfiguration.Initialize();
-            Application.Run( new MainForm( vrConfig ) );
+            Application.Run( new MainForm( config, steamVRConfig ) );
 
         }
         catch ( Exception ex )
