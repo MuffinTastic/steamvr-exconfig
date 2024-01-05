@@ -37,18 +37,21 @@ public partial class MainForm
 
         while ( controls.TryDequeue( out Control? control ) )
         {
+            if ( control is null )
+                continue;
+
+            // Change this current control's theme
+            control.BackColor = themeColors[ThemeKeys.Background];
+            control.ForeColor = themeColors[ThemeKeys.Foreground];
+
             // Walk down the tree
-            if ( control?.Controls is null )
+            if ( control.Controls is null )
                 continue;
 
             foreach ( Control child in control.Controls )
             {
                 controls.Enqueue( child );
             }
-
-            // Change this current control's theme
-            control.BackColor = themeColors[ThemeKeys.Background];
-            control.ForeColor = themeColors[ThemeKeys.Foreground];
         }
     }
 
